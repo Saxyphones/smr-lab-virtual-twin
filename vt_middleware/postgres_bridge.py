@@ -2,8 +2,9 @@ import asyncio
 import json
 import asyncpg
 import websockets
+import os
 
-DB_DSN = "postgresql://db_user:1234@192.168.1.104:5433/manufacturing_db"
+DB_DSN = os.environ.get("DB_DSN")
 TABLE_NAME = "robot"
 FRAME_COLUMN = "frame_id"
 JOINT_COLUMNS = ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
@@ -79,6 +80,11 @@ async def handle_client_message(raw_message: str):
     elif command == "use_latest":
         print("Client requested auto-follow mode.")
         state.auto_follow = True
+        state.generation += 1 # stops any currently-running replay segment
+        if state.current_session is not None:
+            # Jump to "now" rather than resuming from wherever replay left off
+            state.last_seen_frame = await get_latest_frame_id(db_conn, state.current_session)
+        await broadcast_session_changed()
 
     else:
         print(f"Ignoring unknown command: {command!r}")
