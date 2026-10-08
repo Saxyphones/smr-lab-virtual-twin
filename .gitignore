@@ -1,3 +1,4 @@
 vt_middleware/venv/
 vt_middleware/__pycache__/
 *.pyc
+.env
