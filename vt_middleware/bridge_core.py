@@ -295,16 +295,22 @@ class Bridge:
     async def run(self, pool):
         self.pool = pool
 
-        self.current_session = await get_latest_session_id(pool)
-        if self.current_session is None:
-            self.log("No sessions found yet. Waiting...")
-        else:
-            self.cursor = await self.source.latest_cursor(pool, self.current_session)
-            self.log(f"Starting on session {self.current_session} (auto-detected, live), "
-                     f"from cursor {self.cursor}.")
-
+        # Listen before the startup queries, so a client that connects while
+        # they run isn't refused (they can take a while on a cold database)
         async with websockets.serve(self.handle_client, WEBSOCKET_HOST, self.port):
             self.log(f"WebSocket server listening on ws://{WEBSOCKET_HOST}:{self.port}")
+
+            latest = await get_latest_session_id(pool)
+            cursor = None if latest is None else await self.source.latest_cursor(pool, latest)
+            # A client command during the queries bumps the generation and has
+            # already chosen the session; don't overwrite it
+            if self.generation == 0:
+                if latest is None:
+                    self.log("No sessions found yet. Waiting...")
+                else:
+                    self.current_session, self.cursor = latest, cursor
+                    self.log(f"Starting on session {latest} (auto-detected, live), from cursor {cursor}.")
+
             await asyncio.gather(
                 self.session_watcher(),
                 self.supervisor(),

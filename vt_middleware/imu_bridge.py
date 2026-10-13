@@ -58,9 +58,11 @@ class ImuSource(DataSource):
         return -1
 
     async def latest_cursor(self, pool, session_id):
-        result = await pool.fetchval(
-            f"SELECT MAX(id) FROM {TABLE_NAME} WHERE {SESSION_ID_COLUMN} = $1", session_id
-        )
+        # ids are one sequence across all sessions, so the newest id in the whole
+        # table marks "now" for this session too. Filtering by session instead is
+        # slow for a session with no IMU rows yet: Postgres walks the primary key
+        # backwards through the entire table looking for one.
+        result = await pool.fetchval(f"SELECT MAX(id) FROM {TABLE_NAME}")
         return result if result is not None else -1
 
     async def fetch_new(self, pool, session_id, cursor):
