@@ -105,7 +105,7 @@ class ImuSource(DataSource):
             "frameId": row["frame_id"],             # counts per device
             "recordedAt": row["recorded_at"] / 1000.0,  # ms in the table -> seconds
             "quat": [w, x, y, z],
-            "ypr": [row["yaw"], row["pitch"], row["roll"]],  # degrees, for debugging
+            "ypr": [row["yaw"], row["pitch"], row["roll"]],  # degrees; J4/J5 in Unity read these directly
         }
 
 
